@@ -1,6 +1,7 @@
 package net.jmccaffrey.assignment3;
 
 import acm.graphics.GCanvas;
+import acm.graphics.GLabel;
 import acm.graphics.GObject;
 import acm.graphics.GPoint;
 
@@ -44,14 +45,33 @@ public class BreakoutProgram extends GameProgram {
 
     private static final int NPADDLE_BOUNCES = 2;
 
+    private GLabel gameMessage;
+    private GLabel lifeDisplay;
     private BreakoutBall ball;
     private BreakoutPaddle paddle;
     private int paddleBounces = 0;
+    private int lives;
+    private int bricksRemaining;
     
     public void setup() {
         setSize(WIDTH, HEIGHT);
-        paddle = new BreakoutPaddle(WIDTH / 2 - PADDLE_WIDTH / 2, HEIGHT - PADDLE_HEIGHT - PADDLE_Y_OFFSET, PADDLE_WIDTH, PADDLE_HEIGHT);
-        ball = new BreakoutBall(WIDTH / 2 - BALL_RADIUS, HEIGHT / 2 - BALL_RADIUS, BALL_RADIUS);
+        getGCanvas().addMouseMotionListener(this);
+        getGCanvas().addMouseListener(this);
+
+        lifeDisplay = new GLabel("");
+        lifeDisplay.setFont("*-bold-14");
+
+        gameMessage = new GLabel("");
+        gameMessage.setFont("*-bold-32");
+
+        showMessage("CLICK TO BEGIN");
+    }
+
+    public void restartGame() {
+        getGCanvas().removeAll();
+        
+        lives = NTURNS;
+        bricksRemaining = NBRICK_ROWS * NBRICKS_PER_ROW;
 
         Color[] colors = { Color.RED, Color.ORANGE, Color.YELLOW, Color.GREEN, Color.CYAN };
 
@@ -70,12 +90,17 @@ public class BreakoutProgram extends GameProgram {
             }
         }
 
+        paddle = new BreakoutPaddle(WIDTH / 2 - PADDLE_WIDTH / 2, HEIGHT - PADDLE_HEIGHT - PADDLE_Y_OFFSET, PADDLE_WIDTH, PADDLE_HEIGHT);
         add(paddle);
+
+        ball = new BreakoutBall(WIDTH / 2 - BALL_RADIUS, HEIGHT / 2 - BALL_RADIUS, BALL_RADIUS);
         add(ball);
 
-        getGCanvas().addMouseMotionListener(this);
-
-        resume();
+        lifeDisplay.setLabel(String.format("Lives remaining: %d", lives));
+        lifeDisplay.setLocation(WIDTH - lifeDisplay.getWidth() - 10, lifeDisplay.getHeight() + 10);
+        add(lifeDisplay);
+        
+        resumePlay();
     }
 
     public void play() {
@@ -87,18 +112,25 @@ public class BreakoutProgram extends GameProgram {
             ball.bounceX();
         }
 
-        if (ball.getY() < 0 || ball.getY() + ball.getDiameter() > HEIGHT) {
+        if (ball.getY() < 0) {
             ball.bounceY();
         }
 
-        GPoint points[] = {
-            new GPoint(ball.getX(), ball.getY()),
-            new GPoint(ball.getX() + ball.getDiameter(), ball.getY()),
-            new GPoint(ball.getX(), ball.getY() + ball.getDiameter()),
-            new GPoint(ball.getX() + ball.getDiameter(), ball.getY() + ball.getDiameter()),
-        };
+        if (ball.getY() + ball.getDiameter() > HEIGHT) {
+            lives--;
+            lifeDisplay.setLabel(String.format("Lives remaining: %d", lives));
+            
+            if (lives <= 0) {
+                showMessage("DEFEAT!");
+            } else {
+                ball.setLocation(WIDTH / 2 - BALL_RADIUS, HEIGHT / 2 - BALL_RADIUS);
+            }
 
-        for (GPoint point : points) {
+            return;
+        }
+        
+        for (int i = 0; i < 4; i++) {
+            GPoint point = new GPoint(ball.getX() + (i & 1) * ball.getDiameter(), ball.getY() + ((i & 2) / 2) * ball.getDiameter());
             GObject o = canvas.getElementAt(point);
 
             if (o == null) {
@@ -107,6 +139,11 @@ public class BreakoutProgram extends GameProgram {
 
             if (o instanceof BreakoutBrick) {
                 canvas.remove(o);
+                bricksRemaining--;
+
+                if (bricksRemaining <= 0) {
+                    showMessage("VICTORY!");
+                }
             } else if (o instanceof BreakoutPaddle) {
                 paddleBounces++;
 
@@ -128,8 +165,30 @@ public class BreakoutProgram extends GameProgram {
         }
     }
 
+    public void showMessage(String message) {
+        pausePlay();
+
+        gameMessage.setLabel(message);
+        gameMessage.setLocation(WIDTH / 2 - gameMessage.getWidth() / 2, HEIGHT / 2 - gameMessage.getHeight() / 2);
+
+        add(gameMessage);
+    }
+
     @Override
     public void mouseMoved(MouseEvent mouseEvent) {
+        if (isPaused()) {
+            return;
+        }
+        
         paddle.setLocation(mouseEvent.getX() - paddle.getWidth() / 2, paddle.getY());
+    }
+
+    @Override
+    public void mouseClicked(MouseEvent mouseEvent) {
+        if (!isPaused()) {
+            return;
+        }
+
+        restartGame();
     }
 }

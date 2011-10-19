@@ -34,12 +34,16 @@ public class GameProgram extends GraphicsProgram {
 
     }
 
-    public void pause() {
+    public void pausePlay() {
         timer.stop();
     }
 
-    public void resume() {
+    public void resumePlay() {
         timer.start();
+    }
+
+    public boolean isPaused() {
+        return !timer.isRunning();
     }
 
     class TimerAction implements ActionListener {
