@@ -2,13 +2,9 @@ package net.jmccaffrey.assignment3;
 
 import acm.graphics.GCanvas;
 import acm.graphics.GObject;
-import acm.graphics.GRect;
-import acm.program.GraphicsProgram;
+import acm.graphics.GPoint;
 
-import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 
 /**
@@ -16,7 +12,7 @@ import java.awt.event.MouseEvent;
  *
  * @author jmccaffrey
  */
-public class BreakoutProgram extends GraphicsProgram {
+public class BreakoutProgram extends GameProgram {
     /** Width and height of application window in pixels */
     public static final int APPLICATION_WIDTH = 400;
     public static final int APPLICATION_HEIGHT = 600;
@@ -46,17 +42,17 @@ public class BreakoutProgram extends GraphicsProgram {
     /** Number of turns */
     private static final int NTURNS = 3;
 
+    private static final int NPADDLE_BOUNCES = 2;
+
     private BreakoutBall ball;
     private BreakoutPaddle paddle;
-    private Timer timer;
+    private int paddleBounces = 0;
     
-    public void init() {
+    public void setup() {
         setSize(WIDTH, HEIGHT);
         paddle = new BreakoutPaddle(WIDTH / 2 - PADDLE_WIDTH / 2, HEIGHT - PADDLE_HEIGHT - PADDLE_Y_OFFSET, PADDLE_WIDTH, PADDLE_HEIGHT);
         ball = new BreakoutBall(WIDTH / 2 - BALL_RADIUS, HEIGHT / 2 - BALL_RADIUS, BALL_RADIUS);
-    }
 
-    public void run() {
         Color[] colors = { Color.RED, Color.ORANGE, Color.YELLOW, Color.GREEN, Color.CYAN };
 
         int xOffset = BRICK_SEP / 2;
@@ -66,7 +62,7 @@ public class BreakoutProgram extends GraphicsProgram {
             Color color = colors[(int)((double)colors.length / (double)NBRICK_ROWS * row)];
 
             for (int col = 0; col < NBRICKS_PER_ROW; col++) {
-                GRect rect = new GRect(col * BRICK_WIDTH + col * BRICK_SEP + xOffset, row * BRICK_HEIGHT + row * BRICK_SEP + yOffset, BRICK_WIDTH, BRICK_HEIGHT);
+                BreakoutBrick rect = new BreakoutBrick(col * BRICK_WIDTH + col * BRICK_SEP + xOffset, row * BRICK_HEIGHT + row * BRICK_SEP + yOffset, BRICK_WIDTH, BRICK_HEIGHT);
                 rect.setColor(color);
                 rect.setFilled(true);
 
@@ -79,41 +75,61 @@ public class BreakoutProgram extends GraphicsProgram {
 
         getGCanvas().addMouseMotionListener(this);
 
-        timer = new Timer(35, new TimerAction());
-        timer.start();
+        resume();
+    }
+
+    public void play() {
+        GCanvas canvas = getGCanvas();
+
+        ball.move();
+
+        if (ball.getX() < 0 || ball.getX() + ball.getDiameter() > WIDTH) {
+            ball.bounceX();
+        }
+
+        if (ball.getY() < 0 || ball.getY() + ball.getDiameter() > HEIGHT) {
+            ball.bounceY();
+        }
+
+        GPoint points[] = {
+            new GPoint(ball.getX(), ball.getY()),
+            new GPoint(ball.getX() + ball.getDiameter(), ball.getY()),
+            new GPoint(ball.getX(), ball.getY() + ball.getDiameter()),
+            new GPoint(ball.getX() + ball.getDiameter(), ball.getY() + ball.getDiameter()),
+        };
+
+        for (GPoint point : points) {
+            GObject o = canvas.getElementAt(point);
+
+            if (o == null) {
+                continue;
+            }
+
+            if (o instanceof BreakoutBrick) {
+                canvas.remove(o);
+            } else if (o instanceof BreakoutPaddle) {
+                paddleBounces++;
+
+                if (paddleBounces > NPADDLE_BOUNCES) {
+                    paddleBounces = 0;
+                    ball.accelerate(1.0);
+                }
+            }
+
+            if (point.getX() < o.getX() + o.getWidth() || point.getX() < o.getX()) {
+                ball.bounceX();
+            }
+
+            if (point.getY() < o.getY() + o.getHeight() || point.getY() < o.getY()) {
+                ball.bounceY();
+            }
+
+            return;
+        }
     }
 
     @Override
     public void mouseMoved(MouseEvent mouseEvent) {
         paddle.setLocation(mouseEvent.getX() - paddle.getWidth() / 2, paddle.getY());
-    }
-
-    class TimerAction implements ActionListener {
-        public void actionPerformed(ActionEvent e) {
-            GCanvas canvas = getGCanvas();
-
-            ball.move();
-
-            if (ball.getX() < 0 || ball.getX() + ball.getDiameter() > WIDTH) {
-                ball.bounceX();
-            }
-
-            if (ball.getY() < 0 || ball.getY() + ball.getDiameter() > HEIGHT) {
-                ball.bounceY();
-            }
-
-            GObject o = canvas.getElementAt(ball.getX(), ball.getY());
-            if (o != null) {
-                if (ball.getX() < o.getX() + o.getWidth()) {
-                    ball.bounceX();
-                }
-
-                if (ball.getY() < o.getY() + o.getHeight()) {
-                    ball.bounceY();
-                }
-
-                return;
-            }
-        }
     }
 }

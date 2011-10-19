@@ -46,6 +46,10 @@ public class BreakoutBall extends GOval {
         return radius * 2;
     }
 
+    public void accelerate(double speed) {
+        velocityY = velocityY / Math.abs(velocityY) * Math.abs(velocityY) + speed;
+    }
+
     private void setupShape() {
         setFilled(true);
 
